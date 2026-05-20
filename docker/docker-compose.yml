@@ -1,0 +1,43 @@
+name: metadata-platform
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: metadata
+      POSTGRES_PASSWORD: metadata
+      POSTGRES_DB: metadata
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U metadata"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  collector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.collector
+    environment:
+      METADATA_DB_URL: postgresql://metadata:metadata@postgres:5432/metadata
+      LOG_LEVEL: INFO
+      AUTH_REQUIRED: "false"
+      AUTH_SERVICE_TOKEN: dev-token-change-me
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        cd /app/migrations &&
+        bash migrate.sh &&
+        cd /app/collector &&
+        uvicorn metadata_collector.main:app --host 0.0.0.0 --port 8080
+      "
+
+volumes:
+  pgdata:
