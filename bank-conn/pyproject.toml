@@ -12,6 +12,7 @@ dependencies = [
     "sqlalchemy==2.0.30",
     "openlineage-python==1.20.5",
     "hvac==2.3.0",  # HashiCorp Vault client
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

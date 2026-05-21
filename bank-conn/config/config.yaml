@@ -1,0 +1,23 @@
+# bank-conn configuration — overrides built-in defaults.
+# Priority: environment variables > this file > hardcoded defaults.
+#
+# Set BANK_CONN_CONFIG_FILE to point to a different path if needed.
+
+collector:
+  url: http://localhost:8080
+  token: dev-token-change-me
+
+vault:
+  addr: http://localhost:8200
+  token: ""          # leave empty to skip Vault credential fetch
+  namespace: null    # Vault Enterprise namespace (null = not used)
+
+cache:
+  ttl_seconds: 300   # how long to cache connection metadata locally
+
+lineage:
+  emit: true
+  producer: bank-conn/0.1.0
+
+job:
+  namespace: mbbank.default
