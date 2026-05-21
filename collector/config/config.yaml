@@ -5,7 +5,9 @@
 # Rename this file or set METADATA_CONFIG_FILE to use a different path.
 
 # --- Database ---
-metadata_db_url: postgresql://metadata:metadata@localhost:5432/metadata
+metadata_db_url: postgresql://localhost:5432/metadata
+db_user: metadata
+db_password: metadata
 db_pool_min_size: 2
 db_pool_max_size: 10
 

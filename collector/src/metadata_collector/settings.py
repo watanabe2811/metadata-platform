@@ -6,6 +6,18 @@ Loading priority (highest → lowest):
   3. Hardcoded defaults
 
 The YAML file keys must match Settings field names exactly (flat structure).
+
+DB credentials can be set in two ways (a) or (b):
+
+  (a) Full URL — metadata_db_url: postgresql://user:pass@host:5432/dbname
+  (b) Split fields — metadata_db_url without credentials + db_user + db_password
+      e.g. metadata_db_url: postgresql://host:5432/dbname
+           db_user: metadata
+           db_password: metadata
+
+When db_user / db_password are provided, they are injected into metadata_db_url
+even if the URL already contains a userinfo component (they take precedence).
+Env vars DB_USER / DB_PASSWORD map to the split fields.
 """
 from __future__ import annotations
 
@@ -13,8 +25,9 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Tuple, Type
+from urllib.parse import urlparse, urlunparse
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
@@ -51,6 +64,19 @@ def _default_config_path() -> Path:
     return Path("config/config.yaml")
 
 
+def _inject_credentials(url: str, user: str | None, password: str | None) -> str:
+    """Return url with user:password injected into the netloc."""
+    if not user:
+        return url
+    parsed = urlparse(url)
+    host_part = parsed.hostname or ""
+    if parsed.port:
+        host_part = f"{host_part}:{parsed.port}"
+    userinfo = f"{user}:{password}" if password else user
+    new_netloc = f"{userinfo}@{host_part}"
+    return urlunparse(parsed._replace(netloc=new_netloc))
+
+
 class Settings(BaseSettings):
     """Collector configuration."""
 
@@ -60,10 +86,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Database
+    # Database — full URL (credentials optional if db_user/db_password are set)
     metadata_db_url: str = Field(
-        default="postgresql://metadata:metadata@localhost:5432/metadata",
+        default="postgresql://localhost:5432/metadata",
     )
+    # Split credential fields; mapped from env vars DB_USER / DB_PASSWORD
+    db_user: str | None = Field(default=None)
+    db_password: str | None = Field(default=None)
+
     db_pool_min_size: int = Field(default=2)
     db_pool_max_size: int = Field(default=10)
 
@@ -82,6 +112,14 @@ class Settings(BaseSettings):
     # Limits
     max_lineage_depth: int = Field(default=10)
     default_lineage_depth: int = Field(default=3)
+
+    @model_validator(mode="after")
+    def _inject_db_credentials(self) -> Settings:
+        if self.db_user:
+            self.metadata_db_url = _inject_credentials(
+                self.metadata_db_url, self.db_user, self.db_password
+            )
+        return self
 
     @classmethod
     def settings_customise_sources(

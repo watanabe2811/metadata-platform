@@ -171,7 +171,15 @@ related-connections, and downstream traversal.
 ### collector/config/config.yaml
 
 ```yaml
+# Option A — full URL with embedded credentials
 metadata_db_url: postgresql://user:pass@host:5432/metadata
+
+# Option B — URL without credentials + separate fields (db_user / db_password
+# are injected into the URL at startup; env vars DB_USER / DB_PASSWORD map here)
+metadata_db_url: postgresql://host:5432/metadata
+db_user: metadata
+db_password: metadata
+
 db_pool_min_size: 2
 db_pool_max_size: 10
 
